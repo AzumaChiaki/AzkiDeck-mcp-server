@@ -23,7 +23,7 @@ jobs:
       - name: bundle
         run: |
           mkdir -p bundle/azkideck-mcp-server
-          cp -r dist package.json bundle/azkideck-mcp-server/
+          cp -r dist package.json package-lock.json bundle/azkideck-mcp-server/
           cp -r README.md LICENSE docs bundle/azkideck-mcp-server/
           cd bundle/azkideck-mcp-server
           npm ci --omit=dev
