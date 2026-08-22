@@ -26,7 +26,7 @@ jobs:
           cp -r dist package.json package-lock.json bundle/azkideck-mcp-server/
           cp -r README.md LICENSE docs bundle/azkideck-mcp-server/
           cd bundle/azkideck-mcp-server
-          npm ci --omit=dev
+          npm ci --omit=dev --ignore-scripts
           cd ../..
           tar -czf azkideck-mcp-server-bundle.tar.gz -C bundle azkideck-mcp-server
       - uses: softprops/action-gh-release@v2
