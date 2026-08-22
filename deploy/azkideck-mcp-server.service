@@ -8,10 +8,10 @@ User=azkideck
 WorkingDirectory=/var/lib/azkideck-mcp
 Environment=DATA_DIR=/var/lib/azkideck-mcp/data
 Environment=PORT=8787
-# Environment=ADMIN_TOKEN=换成随机长串
+Environment=ADMIN_TOKEN=换成随机长串
 # Environment=TLS_CERT=/etc/letsencrypt/live/azki.example.com/fullchain.pem
 # Environment=TLS_KEY=/etc/letsencrypt/live/azki.example.com/privkey.pem
-ExecStart=/usr/bin/azkideck-mcp-server serve
+ExecStart=/usr/bin/node /opt/azkideck-mcp-server/dist/cli.js serve
 Restart=always
 RestartSec=3
 NoNewPrivileges=true

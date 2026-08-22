@@ -31,10 +31,13 @@ MCP 客户端(Claude Desktop 等)
 ## 快速开始
 
 ```bash
-# 需要 Node.js ≥ 22.13
-npm install -g azkideck-mcp-server   # 或 npx azkideck-mcp-server
+# 需要 Node.js ≥ 22.13。尚未发布到 npm registry,从源码安装:
+git clone https://github.com/AzumaChiaki/AzkiDeck-mcp-server.git
+cd AzkiDeck-mcp-server
+npm ci && npm run build
 
-azkideck-mcp-server serve            # 默认监听 0.0.0.0:8787
+node dist/cli.js serve     # 默认监听 0.0.0.0:8787
+# 可选:npm link 注册全局 azkideck-mcp-server 命令
 ```
 
 公网部署必须启用 TLS(内置 `TLS_CERT`/`TLS_KEY`,或用 Caddy/nginx 反代),详见 [docs/deployment.md](docs/deployment.md)。

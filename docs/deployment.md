@@ -8,8 +8,12 @@
 ## 直接运行
 
 ```bash
-npm install -g azkideck-mcp-server
-ADMIN_TOKEN=<随机长串> azkideck-mcp-server serve
+# 尚未发布到 npm registry,从源码安装:
+git clone https://github.com/AzumaChiaki/AzkiDeck-mcp-server.git
+cd AzkiDeck-mcp-server
+npm ci && npm run build
+ADMIN_TOKEN=<随机长串> node dist/cli.js serve
+# 可选:npm link 注册全局 azkideck-mcp-server 命令(CLI 管理更方便)
 ```
 
 数据在 `./data/`(可用 `DATA_DIR` 改)。
@@ -95,5 +99,6 @@ azkideck-mcp-server tenants create <hex>    # 预置已有凭证(如手机 App �
 ## 升级
 
 ```bash
-npm update -g azkideck-mcp-server && sudo systemctl restart azkideck-mcp-server
+cd AzkiDeck-mcp-server && git pull && npm ci && npm run build
+sudo systemctl restart azkideck-mcp-server
 ```

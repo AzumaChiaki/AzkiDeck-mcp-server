@@ -87,8 +87,9 @@ export function landingPageHtml(): string {
   <h2>三步接入</h2>
   <ol>
     <li>部署服务器(Node.js ≥ 22.13):
-      <pre>npm install -g azkideck-mcp-server
-azkideck-mcp-server serve</pre>
+      <pre>git clone https://github.com/AzumaChiaki/AzkiDeck-mcp-server.git
+cd AzkiDeck-mcp-server &amp;&amp; npm ci &amp;&amp; npm run build
+node dist/cli.js serve</pre>
     </li>
     <li>手机 App(AzkiDeck,Android / iOS)→ 工具箱 → AI 通知桥接 → 中继模式:填入本服务器地址。凭证复用 App 的桥接令牌,私有模式再填部署密钥。</li>
     <li>MCP 客户端接入(以 Claude 为例):
