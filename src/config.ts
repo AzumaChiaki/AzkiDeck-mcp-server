@@ -15,6 +15,10 @@ export interface Config {
   tlsKey: string | null;
   /** HTTP body 上限,默认 1 MiB */
   maxBodyBytes: number;
+  /** /files 上传上限,默认 64 MiB */
+  fileMaxBytes: number;
+  /** /files 文件保留时长,默认 30 分钟 */
+  fileTtlMs: number;
   /** WS 单帧上限,默认 1 MiB */
   maxWsBytes: number;
   /** tools/call 默认超时 ms,默认 30000 */
@@ -72,6 +76,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     tlsCert: str(env, 'TLS_CERT'),
     tlsKey: str(env, 'TLS_KEY'),
     maxBodyBytes: int(env, 'MAX_BODY_BYTES', 1 << 20),
+    fileMaxBytes: int(env, 'FILE_MAX_BYTES', 64 << 20),
+    fileTtlMs: int(env, 'FILE_TTL_MS', 30 * 60_000),
     maxWsBytes: int(env, 'MAX_WS_BYTES', 1 << 20),
     callTimeoutMs: int(env, 'CALL_TIMEOUT_MS', 30_000),
     installTimeoutMs: int(env, 'INSTALL_TIMEOUT_MS', 60_000),

@@ -65,6 +65,20 @@ node scripts/fake-device.mjs --server ws://127.0.0.1:8787 --credential <任意32
 # 之后 Claude 里调用 send_notification,假设备终端会打印 payload
 ```
 
+### 远程安装大文件(表盘/快应用)
+
+MCP 工具参数是 JSON,大文件走 base64 会撞报文上限。远程安装用「文件投递 + url 模式」:
+
+```bash
+# 1. 把文件投到中继(30 分钟有效,仅持同一令牌者可取)
+curl -X POST https://你的服务器/files \
+  -H "Authorization: Bearer <令牌>" --data-binary @表盘.face
+# → {"url":"https://你的服务器/files/<id>","size":…,"sha256":"…","expires_at":…}
+
+# 2. 让 Claude 调用 install_resource,url 填上一步返回的地址
+#    手机 App 会自己从该 URL 下载并装到手表
+```
+
 ## 管理
 
 ```bash
@@ -99,6 +113,7 @@ azkideck-mcp-server mode set private --key <hex> [--reauth]
 | `BUFFER_TTL_MS` | 300000 | 离线缓冲保留 5 分钟 |
 | `RECONNECT_WINDOW_MS` | 600000 | 断连补发窗口 10 分钟 |
 | `RATE_MCP_PER_MINUTE` / `RATE_WS_PER_MINUTE` / `RATE_AUTH_FAIL_PER_MINUTE` | 120 / 600 / 20 | 限流 |
+| `FILE_MAX_BYTES` / `FILE_TTL_MS` | 64MiB / 1800000 | 文件投递上限与保留时长 |
 
 ## 安全模型
 

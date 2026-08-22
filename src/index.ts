@@ -10,6 +10,7 @@ import { Router } from './core/router.js';
 import { McpDispatcher } from './mcp/dispatcher.js';
 import { DeviceSocketHandler } from './relay/deviceSocket.js';
 import { startServer, type RunningServer } from './http/server.js';
+import { startFileSweeper } from './http/files.js';
 
 export interface App {
   server: RunningServer;
@@ -67,10 +68,13 @@ export async function createApp(overrides?: Partial<Config>): Promise<App> {
     log,
   });
 
+  const sweeper = startFileSweeper(config, log);
+
   return {
     server,
     db,
     close: async () => {
+      clearInterval(sweeper);
       await server.close();
       db.close();
     },
