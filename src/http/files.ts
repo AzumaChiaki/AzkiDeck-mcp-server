@@ -3,6 +3,8 @@ import { createHash, randomBytes } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { mkdir, readdir, stat, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { pipeline } from 'node:stream';
+import { TLSSocket } from 'node:tls';
 import type { Config } from '../config.js';
 import type { TenantRegistry } from '../core/tenants.js';
 import { isValidCredential } from '../core/credentials.js';
@@ -65,7 +67,8 @@ export async function handleFileUpload(
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, id), body);
   // 反代后面要以 Host / X-Forwarded-Proto 还原公网地址
-  const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+  const encrypted = req.socket instanceof TLSSocket && req.socket.encrypted;
+  const proto = encrypted || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
   const host = req.headers['host'] ?? url.host;
   const base = `${proto}://${host}`;
   sendJson(res, 200, {
@@ -105,7 +108,8 @@ export function handleFileDownload(
         'content-type': 'application/octet-stream',
         'content-length': st.size,
       });
-      createReadStream(path).pipe(res);
+      // Handle read errors and disconnected clients; a stat/open race must not crash Node.
+      pipeline(createReadStream(path), res, () => {});
     })
     .catch(() => sendJson(res, 404, { error: 'not found' }));
 }

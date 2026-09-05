@@ -1,8 +1,14 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
+import { IncomingMessage, ServerResponse } from 'node:http';
+import { Socket } from 'node:net';
+import { TLSSocket } from 'node:tls';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startTestApp, newCredential, FakeDevice } from './helpers.js';
+import { handleFileUpload } from '../src/http/files.js';
+import { TenantRegistry } from '../src/core/tenants.js';
+import { tenantIdOf } from '../src/core/credentials.js';
 
 let cleanups: (() => Promise<void> | void)[] = [];
 afterEach(async () => {
@@ -23,10 +29,50 @@ async function startWithDevice() {
     await app.close();
     await rm(dir, { recursive: true, force: true });
   });
-  return { baseUrl, cred, dev, config };
+  return { app, baseUrl, cred, dev, config };
 }
 
 describe('临时文件投递 /files', () => {
+  it('文件系统写入失败只返回 500,服务继续响应且不暴露内部路径', async () => {
+    const { baseUrl, cred, config } = await startWithDevice();
+    await writeFile(join(config.dataDir, 'files'), 'not a directory');
+    const res = await fetch(`${baseUrl}/files`, {
+      method: 'POST', headers: { authorization: `Bearer ${cred}` }, body: 'file',
+    });
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: '服务器处理失败' });
+    expect((await fetch(`${baseUrl}/healthz`)).status).toBe(200);
+  });
+
+  it('stat 成功后读取失败不会造成未处理 stream error 或终止服务', async () => {
+    const { baseUrl, cred, config } = await startWithDevice();
+    const id = '1'.repeat(24);
+    await mkdir(join(config.dataDir, 'files', tenantIdOf(cred), id), { recursive: true });
+    const download = fetch(`${baseUrl}/files/${id}`, { headers: { authorization: `Bearer ${cred}` } })
+      .then(res => res.arrayBuffer());
+    await expect(download).rejects.toThrow();
+    expect((await fetch(`${baseUrl}/healthz`)).status).toBe(200);
+  });
+
+  it('内置 TLS 的下载地址保持 HTTPS,即使没有反代头或头被设为 http', async () => {
+    const { app, cred, config } = await startWithDevice();
+    const socket = new TLSSocket(new Socket());
+    const req = new IncomingMessage(socket);
+    req.headers = { host: 'relay.example.test', authorization: `Bearer ${cred}`, 'x-forwarded-proto': 'http' };
+    const res = new ServerResponse(req);
+    const end = vi.spyOn(res, 'end').mockImplementation(() => res);
+    try {
+      await handleFileUpload({ config, tenants: new TenantRegistry(app.db, true) }, req, res,
+        new URL('http://localhost/files'), Buffer.from('payload'));
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(String(end.mock.calls[0]![0]));
+      expect(body.url).toMatch(/^https:\/\/relay\.example\.test\/files\/[0-9a-f]{24}$/);
+    } finally {
+      socket.destroy();
+      end.mockRestore();
+    }
+  });
+
   it('上传 → 拿到 URL → 同租户可下载,内容一致', async () => {
     const { baseUrl, cred } = await startWithDevice();
     const payload = Buffer.from('fake-watchface-binary-\x00\x01\x02'.repeat(100), 'binary');

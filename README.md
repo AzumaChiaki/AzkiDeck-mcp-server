@@ -94,7 +94,7 @@ azkideck-mcp-server mode set private --key <hex> [--reauth]
 
 | 端点 | 说明 |
 |---|---|
-| `GET /healthz` | 公开健康检查,只含计数 |
+| `GET /healthz` | 公开健康检查,含软件版本及计数 |
 | `GET /admin/tenants` | 租户列表(id 仅显示 8 位前缀) |
 | `GET /admin/tenants/:id/devices` | 在线设备 |
 | `POST /admin/tenants/:id/revoke` / `allow` | 撤销/恢复 |
@@ -117,10 +117,12 @@ azkideck-mcp-server mode set private --key <hex> [--reauth]
 
 ## 安全模型
 
-- 服务器**永不存储凭证明文**(SHA-256 哈希),比较使用常量时间算法
+- 认证存储只保存凭证的 SHA-256 哈希,比较使用常量时间算法;中继终止 TLS,运行时会接触认证令牌和调用内容,上传文件以明文临时存储,应保护数据目录
 - 公网部署请强制 TLS;令牌有 128bit 熵,401 按来源 IP 限流
 - 撤销凭证立即生效:在线设备被踢、MCP 侧 401、且不会自动复活
 - 私有模式把「谁能配对」收敛到持有部署密钥的人;`require_reauth` 切换可强制全部已配对设备重新认证
+
+工具的四项 MCP annotations、逐工具判定依据和旧设备兼容策略见 [docs/tool-annotations.md](docs/tool-annotations.md)。这些是行为提示,不是权限控制或安全认证。
 
 ## 与局域网模式的关系
 
@@ -128,7 +130,7 @@ azkideck-mcp-server mode set private --key <hex> [--reauth]
 |---|---|---|
 | 要求 | 电脑手机同网段 | 手机能上网即可 |
 | 地址 | 换 Wi-Fi 会变 | 固定 |
-| 数据路径 | 不经过第三方 | 经过中继(服务器只见哈希与转发的密文/调用内容) |
+| 数据路径 | 不经过第三方 | 经过中继(TLS 分段加密,中继可见令牌与调用/响应明文;不提供端到端加密) |
 | 离线 | 直接失败 | 通知类排队补发 |
 
 两者可同时开启,互不影响。

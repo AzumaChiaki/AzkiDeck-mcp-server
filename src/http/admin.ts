@@ -6,6 +6,7 @@ import { safeEqual, isValidCredential } from '../core/credentials.js';
 import { isObject } from '../core/jsonrpc.js';
 import { CLOSE_REAUTH_REQUIRED } from '../relay/protocol.js';
 import type { ServerMode } from '../store/db.js';
+import { SERVER_VERSION } from '../version.js';
 
 export interface AdminDeps {
   adminToken: string | null;
@@ -22,11 +23,12 @@ function sendJson(res: ServerResponse, status: number, value: unknown): void {
   res.end(JSON.stringify(value));
 }
 
-/** /healthz:公开,只含计数,不含任何标识信息。 */
+/** /healthz:公开,含软件版本及计数,不含租户/设备标识信息。 */
 export function handleHealthz(deps: AdminDeps, res: ServerResponse): void {
   const now = (deps.now ?? Date.now)();
   sendJson(res, 200, {
     ok: true,
+    version: SERVER_VERSION,
     uptime_s: Math.floor((now - deps.startedAt) / 1000),
     tenants: deps.tenants.count(),
     devices_online: deps.devices.onlineCount(),

@@ -3,6 +3,7 @@ import { loadConfig } from '../src/config.js';
 import { createApp, type App } from '../src/index.js';
 import { generateCredential } from '../src/core/credentials.js';
 import WebSocket from 'ws';
+import type { Tool } from '../src/mcp/toolClassify.js';
 
 /** 测试基座:内存库 + 随机端口 + 收紧的超时/心跳。 */
 export async function startTestApp(overrides: Partial<Config> = {}): Promise<{
@@ -126,7 +127,7 @@ export class FakeDevice {
     });
   }
 
-  register(tools = SAMPLE_TOOLS): void {
+  register(tools: Tool[] = SAMPLE_TOOLS): void {
     this.ws!.send(
       JSON.stringify({
         type: 'register',

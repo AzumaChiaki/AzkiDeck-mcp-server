@@ -87,6 +87,7 @@ export class Router {
   ): Promise<JsonRpcResponse> {
     const timeoutMs = timeoutForTool(toolName, this.deps.callTimeoutMs, this.deps.installTimeoutMs);
     const { rid, promise } = this.deps.pending.create({
+      owner: device,
       tenantId: tenant.id,
       deviceId: device.deviceId,
       clientId,

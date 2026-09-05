@@ -1,8 +1,17 @@
+export interface ToolAnnotations {
+  readOnlyHint: boolean;
+  destructiveHint: boolean;
+  idempotentHint: boolean;
+  openWorldHint: boolean;
+  title?: string;
+}
+
 /** MCP Tool 类型(协议子集,与手机端 tools/list 形状一致)。 */
 export interface Tool {
   name: string;
   description?: string;
   inputSchema?: Record<string, unknown>;
+  annotations?: Partial<ToolAnnotations>;
   [key: string]: unknown;
 }
 

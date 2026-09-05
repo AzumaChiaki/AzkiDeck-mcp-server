@@ -67,7 +67,13 @@ export function startServer(deps: HttpServerDeps): Promise<RunningServer> {
   const log = deps.log ?? ((msg: string) => console.log(msg));
 
   const handler = async (req: http.IncomingMessage, res: http.ServerResponse) => {
-    const url = new URL(req.url ?? '/', 'http://localhost');
+    let url: URL;
+    try {
+      url = new URL(req.url ?? '/', 'http://localhost');
+    } catch {
+      res.writeHead(400).end(JSON.stringify({ error: '请求地址无效' }));
+      return;
+    }
     const clientIp = req.socket.remoteAddress ?? 'unknown';
 
     if (url.pathname === '/healthz' && req.method === 'GET') {
@@ -138,15 +144,33 @@ export function startServer(deps: HttpServerDeps): Promise<RunningServer> {
     res.end(JSON.stringify({ error: 'not found' }));
   };
 
+  // node:http does not await async listeners. Keep filesystem/DB failures request-local.
+  const safeHandler: http.RequestListener = (req, res) => {
+    void handler(req, res).catch(() => {
+      log('HTTP 请求处理失败'); // Do not log URLs, tokens or request contents.
+      if (res.headersSent) {
+        res.destroy();
+      } else if (!res.destroyed) {
+        res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: '服务器处理失败' }));
+      }
+    });
+  };
   const useTls = config.tlsCert !== null && config.tlsKey !== null;
   const server = useTls
-    ? https.createServer({ cert: readFileSync(config.tlsCert!), key: readFileSync(config.tlsKey!) }, handler)
-    : http.createServer(handler);
+    ? https.createServer({ cert: readFileSync(config.tlsCert!), key: readFileSync(config.tlsKey!) }, safeHandler)
+    : http.createServer(safeHandler);
 
   // WS 与 HTTP 共用端口,只有 /device 路径接受 upgrade
   const wss = new WebSocketServer({ noServer: true, maxPayload: config.maxWsBytes });
   server.on('upgrade', (req, socket, head) => {
-    const url = new URL(req.url ?? '/', 'http://localhost');
+    let url: URL;
+    try {
+      url = new URL(req.url ?? '/', 'http://localhost');
+    } catch {
+      socket.destroy();
+      return;
+    }
     if (url.pathname !== '/device') {
       socket.destroy();
       return;

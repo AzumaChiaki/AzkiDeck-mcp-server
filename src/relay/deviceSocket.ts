@@ -55,7 +55,7 @@ export class DeviceSocketHandler {
   private onDeviceGone(conn: DeviceConn): void {
     const session = conn.session;
     if (!session) return;
-    this.deps.pending.failDevice(session.deviceId);
+    this.deps.pending.failDevice(session);
     // 只有当前会话仍是登记的那个才移除(避免误删顶替者)
     const current = this.deps.devices.get(session.tenantId, session.deviceId);
     if (current === session) {
@@ -134,7 +134,7 @@ class DeviceConn {
       this.send({ type: 'error', code: 'oversized', message: '消息过大' });
       return;
     }
-    const limitKey = this.session ? `dev:${this.session.deviceId}` : 'dev:unregistered';
+    const limitKey = this.session ? `dev:${this.session.tenantId}:${this.session.deviceId}` : 'dev:unregistered';
     if (!wsLimiter.allow(limitKey)) {
       this.send({ type: 'error', code: 'bad_envelope', message: '消息过频' });
       return;
@@ -162,7 +162,7 @@ class DeviceConn {
     }
     if (msg.type === 'mcp-response') {
       this.deps.devices.touch(this.session.tenantId, this.session.deviceId, this.now());
-      this.deps.pending.resolve(msg.rid, msg.payload, msg.error);
+      this.deps.pending.resolveFromDevice(this.session, msg.rid, msg.payload, msg.error);
       return;
     }
     // pong:应用层兜底,无需处理

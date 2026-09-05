@@ -2,6 +2,8 @@ import type { JsonRpcResponse } from './jsonrpc.js';
 import { error, DEVICE_OFFLINE, INTERNAL_ERROR } from './jsonrpc.js';
 
 interface PendingEntry {
+  /** Exact connection identity, not a device-supplied ID shared across tenants. */
+  owner: object;
   tenantId: string;
   deviceId: string;
   /** 客户端侧 JSON-RPC id,回包时原样带回 */
@@ -25,6 +27,7 @@ export class PendingMap {
   private readonly entries = new Map<string, PendingEntry>();
 
   create(opts: {
+    owner: object;
     tenantId: string;
     deviceId: string;
     clientId: string | number | null;
@@ -38,6 +41,7 @@ export class PendingMap {
       }, opts.timeoutMs);
       timer.unref?.();
       this.entries.set(rid, {
+        owner: opts.owner,
         tenantId: opts.tenantId,
         deviceId: opts.deviceId,
         clientId: opts.clientId,
@@ -46,6 +50,12 @@ export class PendingMap {
       });
     });
     return { rid, promise };
+  }
+
+  /** Only the connection that received the request may answer it. */
+  resolveFromDevice(owner: object, rid: string, payload: unknown, err?: { code: number; message: string }): boolean {
+    if (this.entries.get(rid)?.owner !== owner) return false;
+    return this.resolve(rid, payload, err);
   }
 
   /** 设备回包。payload 必须是带 id 的 JSON-RPC 响应;id 以客户端侧为准。 */
@@ -70,10 +80,10 @@ export class PendingMap {
   }
 
   /** 设备断连:该设备全部 pending 立即失败。 */
-  failDevice(deviceId: string, message = '设备连接已断开'): number {
+  failDevice(owner: object, message = '设备连接已断开'): number {
     let n = 0;
     for (const [rid, entry] of [...this.entries]) {
-      if (entry.deviceId !== deviceId) continue;
+      if (entry.owner !== owner) continue;
       clearTimeout(entry.timer);
       this.entries.delete(rid);
       entry.settle(error(entry.clientId, DEVICE_OFFLINE, message));

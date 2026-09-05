@@ -23,11 +23,12 @@
   "platform": "android",            // "android" | "ios"
   "app_version": "1.4.2",
   "server_name": "azki-watch",
-  "tools": [ { "name": "send_notification", "description": "…", "inputSchema": {…} } ]
+  "tools": [ { "name": "send_notification", "description": "…", "inputSchema": {…},
+    "annotations": { "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": true } } ]
 }
 ```
 
-`tools` 就是该端 `tools/list` 的完整快照(与 App 内 McpEndpoint 的输出一致)。
+`tools` 就是该端 `tools/list` 的完整快照(与 App 内 McpEndpoint 的输出一致)。每个工具应显式声明四项布尔 `annotations`。中继保留有效提示,补全旧设备/旧缓存中的缺失字段,并按中继副作用校正;未知工具使用保守默认值。详见 [tool-annotations.md](tool-annotations.md)。
 
 ### registered(服务器 → 设备)
 

@@ -23,12 +23,13 @@ if (!credential) {
 }
 
 const deviceId = `fake-${Math.random().toString(16).slice(2, 10)}`;
+// Advertise the real AzkiDeck relay contract conservatively; this simulator only logs and returns ok.
 const tools = [
-  { name: 'send_notification', description: '推送通知', inputSchema: { type: 'object' } },
-  { name: 'report_progress', description: '上报进度', inputSchema: { type: 'object' } },
-  { name: 'request_action', description: '请求操作', inputSchema: { type: 'object' } },
-  { name: 'clear_notification', description: '清除通知', inputSchema: { type: 'object' } },
-  { name: 'watch_status', description: '手表状态', inputSchema: { type: 'object' } },
+  { name: 'send_notification', description: '推送通知', inputSchema: { type: 'object' }, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true } },
+  { name: 'report_progress', description: '上报进度', inputSchema: { type: 'object' }, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true } },
+  { name: 'request_action', description: '请求操作', inputSchema: { type: 'object' }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } },
+  { name: 'clear_notification', description: '清除通知', inputSchema: { type: 'object' }, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true } },
+  { name: 'watch_status', description: '手表状态', inputSchema: { type: 'object' }, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
 ];
 
 let attempt = 0;

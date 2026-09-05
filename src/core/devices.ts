@@ -1,4 +1,5 @@
 import type { Tool } from '../mcp/toolClassify.js';
+import { annotateTool, mergeToolAnnotations } from '../mcp/toolAnnotations.js';
 import type { RelayEnvelope } from '../relay/protocol.js';
 
 export interface DeviceSession {
@@ -69,18 +70,19 @@ export class DeviceRegistry {
     if (s) s.lastActiveAt = now;
   }
 
-  /** 聚合在线设备工具:按 name 去重,先到先得。 */
+  /** 按 name 去重,描述/参数先到先得,行为提示取所有候选设备的风险并集。 */
   toolsFor(tenantId: string): Tool[] {
-    const seen = new Set<string>();
-    const out: Tool[] = [];
+    const out = new Map<string, ReturnType<typeof annotateTool>>();
     for (const s of this.onlineFor(tenantId)) {
       for (const t of s.tools) {
-        if (seen.has(t.name)) continue;
-        seen.add(t.name);
-        out.push(t);
+        const tool = annotateTool(t);
+        const previous = out.get(t.name);
+        out.set(t.name, previous
+          ? { ...previous, annotations: mergeToolAnnotations(previous.annotations, tool.annotations) }
+          : tool);
       }
     }
-    return out;
+    return [...out.values()];
   }
 
   /** 踢掉某租户全部在线设备(模式切换 require_reauth 用),返回被踢的会话。 */

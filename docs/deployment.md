@@ -38,7 +38,7 @@ Environment=ADMIN_TOKEN=换成随机长串
 # 内置 TLS(二选一;用反代就别设):
 # Environment=TLS_CERT=/etc/letsencrypt/live/azki.example.com/fullchain.pem
 # Environment=TLS_KEY=/etc/letsencrypt/live/azki.example.com/privkey.pem
-ExecStart=/usr/bin/azkideck-mcp-server serve
+ExecStart=/usr/bin/node /opt/azkideck-mcp-server/dist/cli.js serve
 Restart=always
 RestartSec=3
 
@@ -46,7 +46,7 @@ RestartSec=3
 WantedBy=multi-user.target
 ```
 
-(仓库 `deploy/azkideck-mcp-server.service` 有同样示例。)
+将构建后的项目放在 `/opt/azkideck-mcp-server`，并创建服务用户及可写数据目录。仓库 `deploy/azkideck-mcp-server.service` 提供带 systemd 文件系统限制的完整示例。
 
 ```bash
 sudo systemctl enable --now azkideck-mcp-server

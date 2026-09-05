@@ -8,6 +8,39 @@ afterEach(async () => {
 });
 
 describe('租户隔离', () => {
+  it('其他租户即使知道 rid 且使用相同 deviceId,也不能伪造回包或在断连时取消请求', async () => {
+    const { app, baseUrl, wsUrl } = await startTestApp();
+    cleanups.push(() => app.close());
+    const credA = newCredential();
+    const credB = newCredential();
+    const a = new FakeDevice(wsUrl, credA, 'same-id');
+    const b = new FakeDevice(wsUrl, credB, 'same-id');
+    await a.open();
+    a.register();
+    await a.waitFor(() => a.registeredMsg !== null);
+    await b.open();
+    b.register();
+    await b.waitFor(() => b.registeredMsg !== null);
+    a.responder = () => null;
+    let completed = false;
+    const response = mcpPost(baseUrl, credA, {
+      jsonrpc: '2.0', id: 81, method: 'tools/call', params: { name: 'watch_status' },
+    }).then(value => { completed = true; return value; });
+    await a.waitFor(() => a.received.length === 1);
+    const rid = a.received[0]!.rid;
+    b.ws!.send(JSON.stringify({ type: 'mcp-response', rid, payload: { result: 'forged' } }));
+    // B's legitimate response is a barrier: its earlier forged message has been processed.
+    await mcpPost(baseUrl, credB, {
+      jsonrpc: '2.0', id: 82, method: 'tools/call', params: { name: 'watch_status' },
+    });
+    expect(completed).toBe(false);
+    b.close();
+    await b.waitFor(() => b.closeCode !== null);
+    a.ws!.send(JSON.stringify({ type: 'mcp-response', rid, payload: { result: 'real' } }));
+    expect((await response).body).toEqual({ jsonrpc: '2.0', id: 81, result: 'real' });
+    a.close();
+  });
+
   it('A 的凭证看不到 B 的设备与工具;B 的调用不会路由到 A 的设备', async () => {
     const { app, baseUrl, wsUrl } = await startTestApp();
     cleanups.push(() => app.close());

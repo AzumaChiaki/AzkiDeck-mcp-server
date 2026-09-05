@@ -35,12 +35,13 @@ export function extractCredential(req: IncomingMessage, url: URL): string | null
   return null;
 }
 
-function sendUnauthorized(res: ServerResponse, message: string): void {
-  res.writeHead(401, {
+function sendUnauthorized(deps: McpHttpDeps, clientIp: string, res: ServerResponse, message: string): void {
+  const allowed = deps.authFailLimiter.allow(`401:${clientIp}`);
+  res.writeHead(allowed ? 401 : 429, {
     'content-type': 'application/json; charset=utf-8',
     'www-authenticate': 'Bearer realm="azkideck-mcp-server"',
   });
-  res.end(JSON.stringify({ error: message }));
+  res.end(JSON.stringify({ error: allowed ? message : '鉴权失败过于频繁,请稍后再试' }));
 }
 
 export async function handleMcpRequest(
@@ -54,14 +55,12 @@ export async function handleMcpRequest(
   // 1. 鉴权
   const credential = extractCredential(req, url);
   if (!credential || !isValidCredential(credential)) {
-    deps.authFailLimiter.allow(`401:${clientIp}`); // 计数即可,阈值由外层控
-    sendUnauthorized(res, '缺少或无效的凭证');
+    sendUnauthorized(deps, clientIp, res, '缺少或无效的凭证');
     return;
   }
   const tenant = deps.tenants.resolveHttp(credential);
   if (!tenant) {
-    deps.authFailLimiter.allow(`401:${clientIp}`);
-    sendUnauthorized(res, '凭证无效或已被撤销');
+    sendUnauthorized(deps, clientIp, res, '凭证无效或已被撤销');
     return;
   }
 

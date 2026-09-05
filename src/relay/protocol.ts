@@ -1,5 +1,6 @@
 import { isObject } from '../core/jsonrpc.js';
 import type { Tool } from '../mcp/toolClassify.js';
+import { annotateTool } from '../mcp/toolAnnotations.js';
 
 /** 设备 ↔ 服务器 WS 协议 v1:信封类型与手写校验守卫。 */
 
@@ -76,7 +77,8 @@ function sanitizeTools(v: unknown): Tool[] {
     const t: Tool = { name: item['name'] };
     if (typeof item['description'] === 'string') t.description = item['description'];
     if (isObject(item['inputSchema'])) t.inputSchema = item['inputSchema'];
-    out.push(t);
+    if (isObject(item['annotations'])) t.annotations = item['annotations'];
+    out.push(annotateTool(t));
     if (out.length >= 128) break; // 防御性上限
   }
   return out;

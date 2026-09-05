@@ -1,4 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
+import { request } from 'node:http';
+import { SERVER_VERSION } from '../src/version.js';
 import { startTestApp, mcpPost, mcpHeaders, newCredential, FakeDevice as FD } from './helpers.js';
 
 let cleanup: (() => Promise<void>) | null = null;
@@ -8,6 +10,58 @@ afterEach(async () => {
 });
 
 describe('鉴权', () => {
+  it('initialize 协商协议并发布包版本,healthz 同步显示部署版本', async () => {
+    const { app, baseUrl, wsUrl } = await startTestApp();
+    cleanup = () => app.close();
+    const cred = newCredential();
+    const dev = new FD(wsUrl, cred);
+    await dev.open();
+    dev.register();
+    await dev.waitFor(() => dev.registeredMsg !== null);
+    for (const version of ['2025-06-18', '2025-03-26', '2024-11-05', 'unknown']) {
+      const res = await mcpPost(baseUrl, cred, {
+        jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: version },
+      });
+      expect(res.body).toMatchObject({ result: {
+        protocolVersion: version === 'unknown' ? '2025-03-26' : version,
+        serverInfo: { name: 'azki-watch', version: SERVER_VERSION }, capabilities: { tools: {} },
+      } });
+    }
+    expect(await (await fetch(`${baseUrl}/healthz`)).json()).toMatchObject({ ok: true, version: SERVER_VERSION });
+    dev.close();
+  });
+
+  it('无效 URL 返回 400,不会成为未处理 Promise rejection', async () => {
+    const { app, baseUrl } = await startTestApp();
+    cleanup = () => app.close();
+    const status = await new Promise<number | undefined>((resolve, reject) => {
+      const req = request(baseUrl, { path: 'http://[', method: 'GET' }, res => {
+        res.resume();
+        resolve(res.statusCode);
+      });
+      req.on('error', reject);
+      req.end();
+    });
+    expect(status).toBe(400);
+    expect((await fetch(`${baseUrl}/healthz`)).status).toBe(200);
+  });
+
+  it('失败鉴权超过 IP 配额后返回 429,同 IP 的有效凭证仍可使用', async () => {
+    const { app, baseUrl, wsUrl } = await startTestApp({ rateAuthFailPerMinute: 2 });
+    cleanup = () => app.close();
+    const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
+    expect((await mcpPost(baseUrl, 'bad', ping)).status).toBe(401);
+    expect((await mcpPost(baseUrl, newCredential(), ping)).status).toBe(401);
+    expect((await mcpPost(baseUrl, 'bad', ping)).status).toBe(429);
+    const cred = newCredential();
+    const dev = new FD(wsUrl, cred);
+    await dev.open();
+    dev.register();
+    await dev.waitFor(() => dev.registeredMsg !== null);
+    expect((await mcpPost(baseUrl, cred, ping)).status).toBe(200);
+    dev.close();
+  });
+
   it('无凭证 → 401 + WWW-Authenticate', async () => {
     const { app, baseUrl } = await startTestApp();
     cleanup = () => app.close();

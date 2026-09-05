@@ -4,12 +4,12 @@ import type { Tenant } from '../core/tenants.js';
 import type { Router } from '../core/router.js';
 import type { DeviceRegistry } from '../core/devices.js';
 import type { Tool } from './toolClassify.js';
+import { annotateTool } from './toolAnnotations.js';
+import { SERVER_VERSION } from '../version.js';
 
 /** 与手机端 McpEndpoint 一致的协议版本协商集。 */
 const SUPPORTED_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'] as const;
 const DEFAULT_VERSION = '2025-03-26';
-
-const SERVER_VERSION = '0.1.0';
 
 export interface DispatcherDeps {
   router: Router;
@@ -72,6 +72,6 @@ export class McpDispatcher {
   private toolsFor(tenant: Tenant): Tool[] {
     const live = this.deps.devices.toolsFor(tenant.id);
     if (live.length > 0) return live;
-    return tenant.toolCache;
+    return tenant.toolCache.map(annotateTool);
   }
 }

@@ -195,6 +195,6 @@ describe('公开/私有模式', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body['ok']).toBe(true);
-    expect(Object.keys(body).sort()).toEqual(['devices_online', 'ok', 'tenants', 'uptime_s']);
+    expect(Object.keys(body).sort()).toEqual(['devices_online', 'ok', 'tenants', 'uptime_s', 'version']);
   });
 });
